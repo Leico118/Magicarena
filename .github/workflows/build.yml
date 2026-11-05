@@ -1,4 +1,4 @@
-name: Compiler l'APK Magic Arena
+ name: Compiler l'APK Magic Arena
 
 on:
   push:
@@ -13,6 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Décompresser le paquet du jeu (fichier .zip envoyé tel quel)
+        run: |
+          for z in $(ls Magicarena*.zip 2>/dev/null | sort -V); do
+            echo "Décompression de $z"
+            rm -rf paquet && unzip -o -q "$z" -d paquet
+            find paquet -type f -exec mv -f {} . \;
+          done
+          rm -rf paquet
 
       - name: Vérifier que les fichiers du jeu sont là
         run: |
