@@ -1,4 +1,4 @@
- name: Compiler l'APK Magic Arena
+name: Compiler l'APK Magic Arena
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Décompresser le paquet du jeu (fichier .zip envoyé tel quel)
         run: |
-          for z in $(ls Magicarena*.zip 2>/dev/null | sort -V); do
+          ls -1 Magicarena*.zip 2>/dev/null | sort -V | while IFS= read -r z; do
             echo "Décompression de $z"
             rm -rf paquet && unzip -o -q "$z" -d paquet
             find paquet -type f -exec mv -f {} . \;
