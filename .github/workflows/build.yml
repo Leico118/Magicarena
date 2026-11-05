@@ -1,0 +1,92 @@
+name: Compiler l'APK Magic Arena
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier que les fichiers du jeu sont là
+        run: |
+          if [ ! -f index.html ] && [ ! -f app/src/main/assets/index.html ]; then
+            echo "Les fichiers du jeu ne sont pas encore envoyés : rien à compiler pour l'instant."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Ranger les fichiers dans le projet Android
+        if: env.SKIP != '1'
+        run: |
+          A=app/src/main
+          mkdir -p $A/java/com/leico/magicarena $A/assets/three/shaders $A/assets/three/postprocessing $A/assets/fonts
+          m(){ if [ -f "$1" ]; then mv "$1" "$2"; fi; }
+          m index.html $A/assets/index.html
+          m three.min.js $A/assets/three/three.min.js
+          m LICENSE-three.txt $A/assets/three/LICENSE-three.txt
+          m CopyShader.js $A/assets/three/shaders/CopyShader.js
+          m LuminosityHighPassShader.js $A/assets/three/shaders/LuminosityHighPassShader.js
+          m EffectComposer.js $A/assets/three/postprocessing/EffectComposer.js
+          m RenderPass.js $A/assets/three/postprocessing/RenderPass.js
+          m ShaderPass.js $A/assets/three/postprocessing/ShaderPass.js
+          m UnrealBloomPass.js $A/assets/three/postprocessing/UnrealBloomPass.js
+          m fonts.css $A/assets/fonts/fonts.css
+          m MainActivity.java $A/java/com/leico/magicarena/MainActivity.java
+          m AndroidManifest.xml $A/AndroidManifest.xml
+          m app.build.gradle app/build.gradle
+          m magicarena.jks app/magicarena.jks
+          for s in 48:mdpi 72:hdpi 96:xhdpi 144:xxhdpi 192:xxxhdpi; do
+            n=${s%%:*}; d=${s##*:}; mkdir -p $A/res/mipmap-$d; m ic_launcher_$n.png $A/res/mipmap-$d/ic_launcher.png
+          done
+          find app -type f | sort
+
+      - uses: actions/setup-java@v4
+        if: env.SKIP != '1'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: env.SKIP != '1'
+        with:
+          gradle-version: '8.9'
+
+      - name: Télécharger les polices du jeu
+        if: env.SKIP != '1'
+        continue-on-error: true
+        run: |
+          F=app/src/main/assets/fonts
+          for w in 400 500 700; do curl -fsSL -o $F/alegreya-sans-$w.woff2 "https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5/files/alegreya-sans-latin-$w-normal.woff2"; done
+          for w in 500 700 800; do curl -fsSL -o $F/alegreya-sans-sc-$w.woff2 "https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans-sc@5/files/alegreya-sans-sc-latin-$w-normal.woff2"; done
+
+      - name: Compiler
+        if: env.SKIP != '1'
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Nommer l'APK
+        if: env.SKIP != '1'
+        run: |
+          V=$(grep -oP 'versionName "\K[^"]+' app/build.gradle)
+          echo "V=$V" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "Magicarena-$V.apk"
+
+      - uses: actions/upload-artifact@v4
+        if: env.SKIP != '1'
+        with:
+          name: Magicarena-${{ env.V }}
+          path: Magicarena-${{ env.V }}.apk
+
+      - name: Publier la version (téléchargeable depuis le téléphone)
+        if: env.SKIP != '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.V }}
+          name: Magic Arena ${{ env.V }}
+          files: Magicarena-${{ env.V }}.apk
+          overwrite_files: true
