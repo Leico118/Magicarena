@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.leico.magicarena'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.leico.magicarena"
+        minSdk 24
+        targetSdk 34
+        versionCode 30
+        versionName "0.30.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('magicarena.jks')
+            storePassword 'magicarena'
+            keyAlias 'magicarena'
+            keyPassword 'magicarena'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
